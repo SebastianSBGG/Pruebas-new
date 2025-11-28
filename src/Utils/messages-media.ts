@@ -30,19 +30,15 @@ import type { ILogger } from './logger'
 
 const getTmpFilesDirectory = () => tmpdir()
 
-const getImageProcessingLibrary = async() => {
-	const [jimpModule, sharp] = await Promise.all([
-		import('jimp').catch(() => undefined),
-		import('sharp').catch(() => undefined)
-	])
+const getImageProcessingLibrary = async () => {
+	//@ts-ignore
+	const [jimp, sharp] = await Promise.all([import('jimp').catch(() => {}), import('sharp').catch(() => {})])
 
-	const jimp = jimpModule?.default
-
-	if(sharp) {
+	if (sharp) {
 		return { sharp }
 	}
 
-	if(jimp) {
+	if (jimp) {
 		return { jimp }
 	}
 
@@ -155,17 +151,15 @@ export const extractImageThumb = async (bufferOrFilePath: Readable | Buffer | st
 				height: dimensions.height
 			}
 		}
-	} else if ('jimp' in lib && lib.jimp) {
-		const image = await lib.jimp.read(bufferOrFilePath as any)
+	} else if ('jimp' in lib && typeof lib.jimp?.Jimp === 'object') {
+		const jimp = await (lib.jimp.Jimp as any).read(bufferOrFilePath)
 		const dimensions = {
-			width: image.getWidth(),
-			height: image.getHeight()
+			width: jimp.width,
+			height: jimp.height
 		}
-		const buffer = await image
-			.resize(width, lib.jimp.AUTO)
-			.quality(50)
-			.getBufferAsync(lib.jimp.MIME_JPEG)
-
+		const buffer = await jimp
+			.resize({ w: width, mode: lib.jimp.ResizeStrategy.BILINEAR })
+			.getBuffer('image/jpeg', { quality: 50 })
 		return {
 			buffer,
 			original: dimensions
@@ -205,12 +199,12 @@ export const generateProfilePicture = async (
 				quality: 50
 			})
 			.toBuffer()
-	} else if ('jimp' in lib && lib.jimp) {
-		const image = await lib.jimp.read(buffer)
-		const min = Math.min(image.getWidth(), image.getHeight())
-		const cropped = image.crop(0, 0, min, min)
+	} else if ('jimp' in lib && typeof lib.jimp?.Jimp === 'function') {
+		const jimp = await (lib.jimp.Jimp as any).read(buffer)
+		const min = Math.min(jimp.width, jimp.height)
+		const cropped = jimp.crop({ x: 0, y: 0, w: min, h: min })
 
-		img = cropped.resize(w, h).quality(50).getBufferAsync(lib.jimp.MIME_JPEG)
+		img = cropped.resize({ w, h, mode: lib.jimp.ResizeStrategy.BILINEAR }).getBuffer('image/jpeg', { quality: 50 })
 	} else {
 		throw new Boom('No image processing library available')
 	}
