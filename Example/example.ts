@@ -40,7 +40,7 @@ const rl = readline.createInterface({ input: process.stdin, output: process.stdo
 const question = (text: string) => new Promise<string>((resolve) => rl.question(text, resolve))
 
 // start a connection
-const startSock = async() => {
+const startSock = async(phoneNumber?: string) => {
 	const { state, saveCreds } = await useMultiFileAuthState('baileys_auth_info')
 	// fetch latest version of WA Web
 	const { version, isLatest } = await fetchLatestBaileysVersion()
@@ -49,6 +49,7 @@ const startSock = async() => {
 	const sock = makeWASocket({
 		version,
 		logger,
+		proxyUrl: process.env.PROXY_URL,
 		auth: {
 			creds: state.creds,
 			/** caching makes the store faster to send/recv messages */
@@ -62,15 +63,6 @@ const startSock = async() => {
 		// implement to handle retries & poll updates
 		getMessage
 	})
-
-
-	// Pairing code for Web clients
-	if (usePairingCode && !sock.authState.creds.registered) {
-		// todo move to QR event
-		const phoneNumber = await question('Please enter your phone number:\n')
-		const code = await sock.requestPairingCode(phoneNumber)
-		console.log(`Pairing code: ${code}`)
-	}
 
 	const sendMessageWTyping = async(msg: AnyMessageContent, jid: string) => {
 		await sock.presenceSubscribe(jid)
@@ -93,11 +85,25 @@ const startSock = async() => {
 			// maybe it closed, or we received all offline message or connection opened
 			if(events['connection.update']) {
 				const update = events['connection.update']
-				const { connection, lastDisconnect } = update
+				const { connection, lastDisconnect, qr } = update
+				if (qr && usePairingCode && !sock.authState.creds.registered && phoneNumber) {
+					const code = await sock.requestPairingCode(phoneNumber)
+					console.log(`Tu código de CLOUDEVX es: ${code}`)
+				}
+				if(connection === 'open') {
+					console.log(`
+***************************************************
+*  🤖 CLOUDEVX AI conectado exitosamente 🤖      *
+*                                                 *
+*      ¡Únete a nuestro canal para novedades!     *
+* https://whatsapp.com/channel/0029VbBa4MrDeONCjMXups1r *
+***************************************************
+`)
+				}
 				if(connection === 'close') {
 					// reconnect if not logged out
 					if((lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut) {
-						startSock()
+						startSock(phoneNumber)
 					} else {
 						console.log('Connection closed. You are logged out.')
 					}
@@ -133,41 +139,70 @@ const startSock = async() => {
 			}
 
 			// received a new message
-      if (events['messages.upsert']) {
-        const upsert = events['messages.upsert']
-        console.log('recv messages ', JSON.stringify(upsert, undefined, 2))
+			if(events['messages.upsert']) {
+				const upsert = events['messages.upsert']
+				console.log('recv messages ', JSON.stringify(upsert, undefined, 2))
 
-        if (!!upsert.requestId) {
-          console.log("placeholder message received for request of id=" + upsert.requestId, upsert)
-        }
+				if(!!upsert.requestId) {
+					console.log("placeholder message received for request of id=" + upsert.requestId, upsert)
+				}
 
 
 
-        if (upsert.type === 'notify') {
-          for (const msg of upsert.messages) {
-            if (msg.message?.conversation || msg.message?.extendedTextMessage?.text) {
-              const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text
-              if (text == "requestPlaceholder" && !upsert.requestId) {
-                const messageId = await sock.requestPlaceholderResend(msg.key)
-                console.log('requested placeholder resync, id=', messageId)
-              }
+				if(upsert.type === 'notify') {
+					for(const msg of upsert.messages) {
+						if(msg.message?.conversation || msg.message?.extendedTextMessage?.text) {
+							const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text
+							if(text == "requestPlaceholder" && !upsert.requestId) {
+								const messageId = await sock.requestPlaceholderResend(msg.key)
+								console.log('requested placeholder resync, id=', messageId)
+							}
 
-              // go to an old chat and send this
-              if (text == "onDemandHistSync") {
-                const messageId = await sock.fetchMessageHistory(50, msg.key, msg.messageTimestamp!)
-                console.log('requested on-demand sync, id=', messageId)
-              }
+							// go to an old chat and send this
+							if(text == "onDemandHistSync") {
+								const messageId = await sock.fetchMessageHistory(50, msg.key, msg.messageTimestamp!)
+								console.log('requested on-demand sync, id=', messageId)
+							}
 
-              if (!msg.key.fromMe && doReplies && !isJidNewsletter(msg.key?.remoteJid!)) {
+							if(text === 'test-query-retry') {
+								try {
+									const result = await sock.query({
+										tag: 'iq',
+										attrs: { to: '@s.whatsapp.net', type: 'get', xmlns: 'w:p' },
+										content: [ { tag: 'ping', attrs: { } } ]
+									}, 1, 2)
+									console.log('Query successful:', result)
+								} catch(error) {
+									console.error('Query failed after retries:', error)
+								}
+							}
 
-                console.log('replying to', msg.key.remoteJid)
-                await sock!.readMessages([msg.key])
-                await sendMessageWTyping({ text: 'Hello there!' }, msg.key.remoteJid!)
-              }
-            }
-          }
-        }
-      }
+							if(text === '!menu') {
+								const buttons = [
+									{ buttonId: 'id1', buttonText: { displayText: 'Button 1' }, type: 1 },
+									{ buttonId: 'id2', buttonText: { displayText: 'Button 2' }, type: 1 },
+									{ buttonId: 'id3', buttonText: { displayText: 'Button 3' }, type: 1 }
+								]
+								const buttonMessage = {
+									text: "🤖 ¡Hola! Soy CLOUDEVX AI. ¿En qué puedo ayudarte?",
+									footer: 'Selecciona una opción',
+									buttons: buttons,
+									headerType: 1
+								}
+								await sock.sendMessage(msg.key.remoteJid!, buttonMessage)
+							}
+
+
+							if(!msg.key.fromMe && doReplies && !isJidNewsletter(msg.key?.remoteJid!)) {
+
+								console.log('replying to', msg.key.remoteJid)
+								await sock!.readMessages([msg.key])
+								await sendMessageWTyping({ text: 'Hello there!' }, msg.key.remoteJid!)
+							}
+						}
+					}
+				}
+			}
 
 			// messages updated like status delivered, message deleted etc.
 			if(events['messages.update']) {
@@ -177,7 +212,7 @@ const startSock = async() => {
 
 				for(const { key, update } of events['messages.update']) {
 					if(update.pollUpdates) {
-						const pollCreation: proto.IMessage = {} // get the poll creation message somehow
+						const pollCreation: proto.IMessage = { } // get the poll creation message somehow
 						if(pollCreation) {
 							console.log(
 								'got poll update, aggregation: ',
@@ -237,4 +272,13 @@ const startSock = async() => {
 	}
 }
 
-startSock()
+async function run() {
+	let phoneNumber: string | undefined
+	if (usePairingCode) {
+		phoneNumber = await question('Please enter your phone number:\n')
+		rl.close()
+	}
+	startSock(phoneNumber)
+}
+
+run()
