@@ -88,7 +88,7 @@ const startSock = async(phoneNumber?: string) => {
 				const { connection, lastDisconnect, qr } = update
 				if (qr && usePairingCode && !sock.authState.creds.registered && phoneNumber) {
 					const code = await sock.requestPairingCode(phoneNumber)
-					console.log(`Tu código de CLOUDEVX es: ${code}`)
+					console.log(`CLOUDEVX presenta tu código de emparejamiento: ${code}`)
 				}
 				if(connection === 'open') {
 					console.log(`
