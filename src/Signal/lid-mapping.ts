@@ -154,13 +154,14 @@ export class LIDMappingStore {
 					if (!lidUser) continue
 
 					for (const device of usyncFetch[pair.pn]!) {
-						const deviceSpecificLid = `${lidUser}${!!device ? `:${device}` : ``}@${device === 99 ? 'hosted.lid' : 'lid'}`
+						const domain = jidDecode(pair.lid)?.domainType === WAJIDDomains.HOSTED_LID ? 'hosted' : 's.whatsapp.net';
+						const deviceSpecificLid = `${lidUser}${!!device ? `:${device}` : ``}@${domain === 'hosted' ? 'hosted.lid' : 'lid'}`
 
 						this.logger.trace(
 							`getLIDForPN: USYNC success for ${pair.pn} → ${deviceSpecificLid} (user mapping with device ${device})`
 						)
 
-						const deviceSpecificPn = `${pnUser}${!!device ? `:${device}` : ``}@${device === 99 ? 'hosted' : 's.whatsapp.net'}`
+						const deviceSpecificPn = `${pnUser}${!!device ? `:${device}` : ``}@${domain}`
 
 						successfulPairs[deviceSpecificPn] = { lid: deviceSpecificLid, pn: deviceSpecificPn }
 					}
@@ -170,7 +171,8 @@ export class LIDMappingStore {
 			}
 		}
 
-		return Object.values(successfulPairs)
+		const successfulPairsValues = Object.values(successfulPairs);
+		return successfulPairsValues.length > 0 ? successfulPairsValues : null;
 	}
 
 	/**

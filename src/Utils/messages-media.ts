@@ -663,8 +663,8 @@ export function extensionForMediaMessage(message: WAMessageContent) {
 	} else if (type) {
 		const key = `${type}Message` as keyof WAMessageContent
 		const messageContent = message[key] as WAGenericMediaMessage
-		if (messageContent?.mimetype) {
-			extension = getExtension(messageContent.mimetype)
+		if (messageContent && typeof messageContent.mimetype === 'string') {
+			extension = '.' + getExtension(messageContent.mimetype)
 		}
 	}
 	return extension

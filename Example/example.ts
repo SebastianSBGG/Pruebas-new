@@ -179,76 +179,104 @@ const startSock = async(phoneNumber?: string) => {
               }
 
 				if (text === '!album') {
-					await sock.sendMessage(msg.key.remoteJid!, {
-						albumMessage: [
-							{ image: { url: './Media/ma_img.png' }, caption: 'image 1' },
-							{ image: { url: './Media/ma_img.png' }, caption: 'image 2' }
-						]
-					});
+					try {
+						await sock.sendMessage(msg.key.remoteJid!, {
+							albumMessage: [
+								{ image: { url: './Media/ma_img.png' }, caption: 'image 1' },
+								{ image: { url: './Media/ma_img.png' }, caption: 'image 2' }
+							]
+						});
+					} catch (err) {
+						console.error('Failed to send album message:', err);
+					}
 				}
 
 				if (text === '!event') {
-					await sock.sendMessage(msg.key.remoteJid!, {
-						eventMessage: {
-							name: 'My Event',
-							description: 'This is my event',
-							startTime: '1763019000',
-							endTime: '1763026200',
-						}
-					});
+					try {
+						await sock.sendMessage(msg.key.remoteJid!, {
+							eventMessage: {
+								name: 'My Event',
+								description: 'This is my event',
+								startTime: '1763019000',
+								endTime: '1763026200',
+							}
+						});
+					} catch (err) {
+						console.error('Failed to send event message:', err);
+					}
 				}
 
 				if (text === '!ai') {
-					await sock.sendMessage(msg.key.remoteJid!, {
-						text: 'Este es un mensaje con el ícono de IA.',
-						isAi: true
-					});
+					try {
+						await sock.sendMessage(msg.key.remoteJid!, {
+							text: 'Este es un mensaje con el ícono de IA.',
+							isAi: true
+						});
+					} catch (err) {
+						console.error('Failed to send AI message:', err);
+					}
 				}
 
 				if (text === '!interactive') {
-					await sock.sendMessage(msg.key.remoteJid!, {
-						interactiveMessage: {
-							title: 'My Interactive Message',
-							footer: 'This is the footer',
-							buttons: [
-								{ name: 'cta_copy', buttonParamsJson: JSON.stringify({ display_text: 'Copy Code', id: '123', copy_code: 'abc' }) }
-							]
-						}
-					});
+					try {
+						await sock.sendMessage(msg.key.remoteJid!, {
+							interactiveMessage: {
+								title: 'My Interactive Message',
+								footer: 'This is the footer',
+								buttons: [
+									{ name: 'cta_copy', buttonParamsJson: JSON.stringify({ display_text: 'Copy Code', id: '123', copy_code: 'abc' }) }
+								]
+							}
+						});
+					} catch (err) {
+						console.error('Failed to send interactive message:', err);
+					}
 				}
 
 				if (text === '!product') {
-					await sock.sendMessage(msg.key.remoteJid!, {
-						productMessage: {
-							title: 'My Product',
-							description: 'This is my product',
-							productId: '123',
-							retailerId: '456',
-							priceAmount1000: 10000,
-							currencyCode: 'USD'
-						}
-					});
+					try {
+						await sock.sendMessage(msg.key.remoteJid!, {
+							productMessage: {
+								title: 'My Product',
+								description: 'This is my product',
+								productId: '123',
+								retailerId: '456',
+								priceAmount1000: 10000,
+								currencyCode: 'USD'
+							}
+						});
+					} catch (err) {
+						console.error('Failed to send product message:', err);
+					}
 				}
 
 				if (text === '!payment') {
-					await sock.sendMessage(msg.key.remoteJid!, {
-						requestPaymentMessage: {
-							currency: 'USD',
-							amount: 10000,
-						}
-					});
+					try {
+						await sock.sendMessage(msg.key.remoteJid!, {
+							requestPaymentMessage: {
+								currency: 'USD',
+								amount: 10000,
+							}
+						});
+					} catch (err) {
+						console.error('Failed to send payment message:', err);
+					}
 				}
 
 				if (text === '!poll_result') {
-					await sock.sendMessage(msg.key.remoteJid!, {
-						pollResultMessage: {
-							name: 'My Poll Result',
-							pollVotes: [
-								{ optionName: 'Option 1', optionVoteCount: '5' },
-								{ optionName: 'Option 2', optionVoteCount: '10' }
-							]
-						}
-					});
+					try {
+						await sock.sendMessage(msg.key.remoteJid!, {
+							pollResultMessage: {
+								name: 'My Poll Result',
+								pollVotes: [
+									{ optionName: 'Option 1', optionVoteCount: '5' },
+									{ optionName: 'Option 2', optionVoteCount: '10' }
+								]
+							}
+						});
+					} catch (err) {
+						console.error('Failed to send poll result message:', err);
+					}
 				}
             }
           }

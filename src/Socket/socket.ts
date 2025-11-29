@@ -343,7 +343,8 @@ export const makeSocket = (config: SocketConfig) => {
 	const pnFromLIDUSync = async (jids: string[]): Promise<LIDMapping[] | undefined> => {
 		const usyncQuery = new USyncQuery().withLIDProtocol().withContext('background')
 
-		for (const jid of jids) {
+		const uniqueValidJids = Array.from(new Set(jids)).filter(jid => typeof jid === 'string' && jid.length > 0)
+		for (const jid of uniqueValidJids) {
 			usyncQuery.withUser(new USyncUser().withId(jid))
 		}
 

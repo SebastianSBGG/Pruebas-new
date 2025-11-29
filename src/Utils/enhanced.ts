@@ -98,8 +98,8 @@ export function isLidJid(jid: string | null | undefined): boolean {
 export function isValidJid(jid: string | null | undefined): boolean {
     if (!jid) return false;
     const cleaned = autoCleanJid(jid);
-    if (!cleaned || isLidJid(cleaned)) return false;
-    return /^(\d{10,15})@(s.whatsapp.net|g.us)$/.test(cleaned as string);
+    if (!cleaned || cleaned === '' || isLidJid(cleaned)) return false;
+    return /^(\d{10,15})@(s.whatsapp.net|g.us)$/.test(cleaned);
 }
 
 /**
@@ -154,14 +154,18 @@ export async function autoProcessJids(conn: any, jids: (string | null | undefine
     if (!Array.isArray(jids)) return [];
 
     const promises = jids.map(async (jid) => {
-        if (!jid) return null;
+        try {
+            if (!jid) return null;
 
-        const cleaned = autoCleanJid(jid);
-        if (isLidJid(cleaned)) {
-            return await autoResolveLid(conn, cleaned as string);
+            const cleaned = autoCleanJid(jid);
+            if (isLidJid(cleaned)) {
+                return await autoResolveLid(conn, cleaned as string);
+            }
+
+            return isValidJid(cleaned) ? cleaned : null;
+        } catch (err) {
+            return null;
         }
-
-        return isValidJid(cleaned) ? cleaned : null;
     });
 
     const results = await Promise.all(promises);
@@ -190,10 +194,16 @@ export async function getEnhancedGroupMetadata(conn: any, groupJid: string): Pro
 
             if (isLidJid(jid)) {
                 jid = await autoResolveLid(conn, jid as string);
-                if (!jid) return null;
+                if (!jid) {
+                    console.error('Failed to resolve LID JID for participant:', p.id);
+                    return null;
+                }
             }
 
-            if (!isValidJid(jid)) return null;
+            if (!isValidJid(jid)) {
+                console.error('Invalid JID for participant:', p.id);
+                return null;
+            }
 
             return {
                 jid,

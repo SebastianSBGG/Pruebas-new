@@ -245,6 +245,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				}
 
 				jid = jidNormalizedUser(jid)
+				if (!jid) {
+					throw new Boom('Invalid normalized JID');
+				}
 				return { jid, user }
 			})
 			.filter((j): j is { jid: string, user: string | undefined } => j !== null)
@@ -479,20 +482,28 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				statusCode: 500
 			})
 		}
-		const msgId = await relayMessage(meJid as string, protocolMessage, {
-			additionalAttributes: {
-				category: 'peer',
+		let msgId: string;
+		try {
+			msgId = await relayMessage(meJid as string, protocolMessage, {
+				additionalAttributes: {
+					category: 'peer',
 
-				push_priority: 'high_force'
-			},
-			additionalNodes: [
-				{
-					tag: 'meta',
-					attrs: { appdata: 'default' }
-				}
-			]
-		})
-
+					push_priority: 'high_force'
+				},
+				additionalNodes: [
+					{
+						tag: 'meta',
+						attrs: { appdata: 'default' }
+					}
+				]
+			});
+		} catch (err) {
+			logger.error({ err }, 'Failed to relay peer data operation message');
+			throw new Boom('Failed to send peer data operation message');
+		}
+		if (!msgId) {
+			throw new Boom('relayMessage returned invalid message ID');
+		}
 		return msgId
 	}
 
