@@ -604,6 +604,20 @@ export const generateWAMessageContent = async (
 		m = { viewOnceMessage: { message: m } }
 	}
 
+	if ('isAi' in message && !!message.isAi) {
+		m.messageContextInfo = {
+			botMetadata: {
+				botMessageOriginMetadata: {
+					origins: [
+						{
+							type: proto.BotMessageOrigin.BotMessageOriginType.BOT_MESSAGE_ORIGIN_TYPE_AI_INITIATED,
+						}
+					]
+				}
+			}
+		}
+	}
+
 	if ('mentions' in message && message.mentions?.length) {
 		const messageType = Object.keys(m)[0]! as Extract<keyof proto.IMessage, MessageWithContextInfo>
 		const key = m[messageType]
