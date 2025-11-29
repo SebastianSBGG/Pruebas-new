@@ -87,6 +87,7 @@ const exports = {
 
 export default exports
 
+import { isJidNewsletter } from './WABinary'
 // ✅ EXPORTACIONES NOMBRADAS (OPCIONAL PERO RECOMENDADO)
 export {
     makeWASocket,
@@ -94,6 +95,7 @@ export {
     downloadContentFromMessage,
     jidDecode,
     areJidsSameUser,
+    isJidNewsletter,
     generateWAMessage,
     generateForwardMessageContent,
     generateWAMessageFromContent,

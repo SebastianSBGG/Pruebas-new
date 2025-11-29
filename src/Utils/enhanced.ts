@@ -4,8 +4,8 @@
  * Compatible con proyectos TypeScript estrictos
  * @module baileys-enhanced
  */
-const makeWASocket = require('@whiskeysockets/baileys').default;
-const chalk = require('chalk');
+import makeWASocket from '../Socket';
+import chalk from 'chalk';
 
 // ==================== TYPES (JSDoc) ====================
 
@@ -67,7 +67,7 @@ const CONFIG = {
  * @param {string | null | undefined} jid
  * @returns {string | null}
  */
-function autoCleanJid(jid) {
+export function autoCleanJid(jid) {
     if (!jid) return null;
     try {
         return String(jid).trim().split(':')[0].split('/')[0];
@@ -81,7 +81,7 @@ function autoCleanJid(jid) {
  * @param {string | null | undefined} jid
  * @returns {boolean}
  */
-function isLidJid(jid) {
+export function isLidJid(jid) {
     if (!jid) return false;
     const str = String(jid);
     return str.includes('@lid') || str.includes('lid:');
@@ -92,7 +92,7 @@ function isLidJid(jid) {
  * @param {string | null | undefined} jid
  * @returns {boolean}
  */
-function isValidJid(jid) {
+export function isValidJid(jid) {
     if (!jid) return false;
     const cleaned = autoCleanJid(jid);
     if (!cleaned || isLidJid(cleaned)) return false;
@@ -105,7 +105,7 @@ function isValidJid(jid) {
  * @param {string} lid
  * @returns {Promise<string | null>}
  */
-async function autoResolveLid(conn, lid) {
+export async function autoResolveLid(conn, lid) {
     if (!lid || !isLidJid(lid)) return lid;
 
     const cached = jidCache.get(lid);
@@ -147,7 +147,7 @@ async function autoResolveLid(conn, lid) {
  * @param {(string | null | undefined)[]} jids
  * @returns {Promise<string[]>}
  */
-async function autoProcessJids(conn, jids) {
+export async function autoProcessJids(conn, jids) {
     if (!Array.isArray(jids)) return [];
 
     const promises = jids.map(async (jid) => {
@@ -171,7 +171,7 @@ async function autoProcessJids(conn, jids) {
  * @param {string} groupJid
  * @returns {Promise<EnhancedGroupMetadata | null>}
  */
-async function getEnhancedGroupMetadata(conn, groupJid) {
+export async function getEnhancedGroupMetadata(conn, groupJid) {
     const cached = groupCache.get(groupJid);
     if (cached && (Date.now() - cached.time) < CONFIG.TTL) {
         return cached.data;
