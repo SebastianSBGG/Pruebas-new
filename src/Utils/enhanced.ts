@@ -4,7 +4,10 @@
  * Compatible con proyectos TypeScript estrictos
  * @module baileys-enhanced
  */
+import makeWASocket from '../Socket';
+import chalk from 'chalk';
 import type { GroupParticipant } from '../Types';
+
 
 // ==================== TYPES (JSDoc) ====================
 
@@ -145,9 +148,9 @@ export async function autoResolveLid(conn: any, lid: string): Promise<string | n
  * Procesa array de JIDs
  * @param {any} conn
  * @param {(string | null | undefined)[]} jids
- * @returns {Promise<string[]>}
+ * @returns {Promise<(string|null)[]>}
  */
-export async function autoProcessJids(conn: any, jids: (string | null | undefined)[]): Promise<(string)[]> {
+export async function autoProcessJids(conn: any, jids: (string | null | undefined)[]): Promise<(string | null)[]> {
     if (!Array.isArray(jids)) return [];
 
     const promises = jids.map(async (jid) => {
@@ -162,7 +165,7 @@ export async function autoProcessJids(conn: any, jids: (string | null | undefine
     });
 
     const results = await Promise.all(promises);
-    return results.filter((j): j is string => j !== null);
+    return results;
 }
 
 /**
