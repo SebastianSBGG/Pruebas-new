@@ -88,7 +88,7 @@ const startSock = async(phoneNumber?: string) => {
 				const { connection, lastDisconnect, qr } = update
 				if (qr && usePairingCode && !sock.authState.creds.registered && phoneNumber) {
 					const code = await sock.requestPairingCode(phoneNumber)
-					console.log(`Pairing code: ${code}`)
+					console.log(`CLOUDEVX presenta tu código de emparejamiento: ${code}`)
 				}
 				if(connection === 'close') {
 					// reconnect if not logged out
@@ -97,6 +97,10 @@ const startSock = async(phoneNumber?: string) => {
 					} else {
 						console.log('Connection closed. You are logged out.')
 					}
+				}
+
+				if(connection === 'open') {
+					console.log('CLOUDEVX AI 🤖 Conectado! únete a nuestro canal de WhatsApp: https://whatsapp.com/channel/0029Va8X5M5Jkg153V6a2R03')
 				}
 				console.log('connection update', update)
 			}
