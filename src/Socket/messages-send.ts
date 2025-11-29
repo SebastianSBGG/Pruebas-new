@@ -247,7 +247,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				jid = jidNormalizedUser(jid)
 				return { jid, user }
 			})
-			.filter(jid => jid !== null)
+			.filter((j): j is { jid: string, user: string | undefined } => j !== null)
 
 		let mgetDevices: undefined | Record<string, FullJid[] | undefined>
 
@@ -473,9 +473,13 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			}
 		}
 
-		const meJid = autoCleanJid(authState.creds.me.id) as string
-
-		const msgId = await relayMessage(meJid, protocolMessage, {
+		const meJid = autoCleanJid(authState.creds.me.id)
+		if (!meJid) {
+			throw new Boom('Could not clean my JID', {
+				statusCode: 500
+			})
+		}
+		const msgId = await relayMessage(meJid as string, protocolMessage, {
 			additionalAttributes: {
 				category: 'peer',
 

@@ -6,7 +6,8 @@
  */
 import makeWASocket from '../Socket';
 import chalk from 'chalk';
-import { GroupParticipant } from '../Types';
+import type { GroupParticipant } from '../Types';
+
 
 // ==================== TYPES (JSDoc) ====================
 
@@ -71,7 +72,8 @@ const CONFIG = {
 export function autoCleanJid(jid: string | null | undefined): string | null {
     if (!jid) return null;
     try {
-        return String(jid).trim().split(':')[0].split('/')[0];
+        const result = String(jid).trim().split(':')[0]?.split('/')[0];
+        return result ?? null;
     } catch {
         return null;
     }
@@ -117,7 +119,7 @@ export async function autoResolveLid(conn: any, lid: string): Promise<string | n
     if (failedLids.has(lid)) return null;
 
     try {
-        const phone = lid.split('@')[0].replace(/\D/g, '');
+        const phone = lid.split('@')[0]?.replace(/\D/g, '');
         if (!phone || phone.length < 10) return null;
 
         const [result] = await conn.onWhatsApp(phone);
@@ -146,7 +148,7 @@ export async function autoResolveLid(conn: any, lid: string): Promise<string | n
  * Procesa array de JIDs
  * @param {any} conn
  * @param {(string | null | undefined)[]} jids
- * @returns {Promise<string[]>}
+ * @returns {Promise<(string|null)[]>}
  */
 export async function autoProcessJids(conn: any, jids: (string | null | undefined)[]): Promise<(string | null)[]> {
     if (!Array.isArray(jids)) return [];
@@ -163,7 +165,7 @@ export async function autoProcessJids(conn: any, jids: (string | null | undefine
     });
 
     const results = await Promise.all(promises);
-    return results.filter((j) => j !== null);
+    return results;
 }
 
 /**
@@ -196,7 +198,7 @@ export async function getEnhancedGroupMetadata(conn: any, groupJid: string): Pro
             return {
                 jid,
                 admin: p.admin || null,
-                isAdmin: ['admin', 'superadmin'].includes(p.admin as string)
+                isAdmin: ['admin', 'superadmin'].includes(p.admin || '')
             };
         })
     );
