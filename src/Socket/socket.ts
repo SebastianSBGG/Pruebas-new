@@ -344,12 +344,7 @@ export const makeSocket = (config: SocketConfig) => {
 		const usyncQuery = new USyncQuery().withLIDProtocol().withContext('background')
 
 		for (const jid of jids) {
-			if (isLidUser(jid)) {
-				logger?.warn('LID user found in LID fetch call')
-				continue
-			} else {
-				usyncQuery.withUser(new USyncUser().withId(jid))
-			}
+			usyncQuery.withUser(new USyncUser().withId(jid))
 		}
 
 		if (usyncQuery.users.length === 0) {

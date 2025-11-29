@@ -4,8 +4,7 @@
  * Compatible con proyectos TypeScript estrictos
  * @module baileys-enhanced
  */
-import makeWASocket from '../Socket';
-import chalk from 'chalk';
+import type { GroupParticipant } from '../Types';
 
 // ==================== TYPES (JSDoc) ====================
 
@@ -67,10 +66,11 @@ const CONFIG = {
  * @param {string | null | undefined} jid
  * @returns {string | null}
  */
-export function autoCleanJid(jid) {
+export function autoCleanJid(jid: string | null | undefined): string | null {
     if (!jid) return null;
     try {
-        return String(jid).trim().split(':')[0].split('/')[0];
+        const result = String(jid).trim().split(':')[0]?.split('/')[0];
+        return result ?? null;
     } catch {
         return null;
     }
@@ -81,7 +81,7 @@ export function autoCleanJid(jid) {
  * @param {string | null | undefined} jid
  * @returns {boolean}
  */
-export function isLidJid(jid) {
+export function isLidJid(jid: string | null | undefined): boolean {
     if (!jid) return false;
     const str = String(jid);
     return str.includes('@lid') || str.includes('lid:');
@@ -92,11 +92,11 @@ export function isLidJid(jid) {
  * @param {string | null | undefined} jid
  * @returns {boolean}
  */
-export function isValidJid(jid) {
+export function isValidJid(jid: string | null | undefined): boolean {
     if (!jid) return false;
     const cleaned = autoCleanJid(jid);
     if (!cleaned || isLidJid(cleaned)) return false;
-    return /^(\d{10,15})@(s.whatsapp.net|g.us)$/.test(cleaned);
+    return /^(\d{10,15})@(s.whatsapp.net|g.us)$/.test(cleaned as string);
 }
 
 /**
@@ -105,7 +105,7 @@ export function isValidJid(jid) {
  * @param {string} lid
  * @returns {Promise<string | null>}
  */
-export async function autoResolveLid(conn, lid) {
+export async function autoResolveLid(conn: any, lid: string): Promise<string | null> {
     if (!lid || !isLidJid(lid)) return lid;
 
     const cached = jidCache.get(lid);
@@ -116,14 +116,14 @@ export async function autoResolveLid(conn, lid) {
     if (failedLids.has(lid)) return null;
 
     try {
-        const phone = lid.split('@')[0].replace(/\D/g, '');
+        const phone = lid.split('@')[0]?.replace(/\D/g, '');
         if (!phone || phone.length < 10) return null;
 
         const [result] = await conn.onWhatsApp(phone);
         if (result?.jid) {
             const resolved = autoCleanJid(result.jid);
             if (isValidJid(resolved)) {
-                jidCache.set(lid, { jid: resolved, time: Date.now() });
+                jidCache.set(lid, { jid: resolved as string, time: Date.now() });
 
                 if (jidCache.size > CONFIG.MAX_SIZE) {
                     const firstKey = jidCache.keys().next().value;
@@ -147,7 +147,7 @@ export async function autoResolveLid(conn, lid) {
  * @param {(string | null | undefined)[]} jids
  * @returns {Promise<string[]>}
  */
-export async function autoProcessJids(conn, jids) {
+export async function autoProcessJids(conn: any, jids: (string | null | undefined)[]): Promise<(string)[]> {
     if (!Array.isArray(jids)) return [];
 
     const promises = jids.map(async (jid) => {
@@ -155,14 +155,14 @@ export async function autoProcessJids(conn, jids) {
 
         const cleaned = autoCleanJid(jid);
         if (isLidJid(cleaned)) {
-            return await autoResolveLid(conn, cleaned);
+            return await autoResolveLid(conn, cleaned as string);
         }
 
         return isValidJid(cleaned) ? cleaned : null;
     });
 
     const results = await Promise.all(promises);
-    return results.filter((j) => j !== null);
+    return results.filter((j): j is string => j !== null);
 }
 
 /**
@@ -171,7 +171,7 @@ export async function autoProcessJids(conn, jids) {
  * @param {string} groupJid
  * @returns {Promise<EnhancedGroupMetadata | null>}
  */
-export async function getEnhancedGroupMetadata(conn, groupJid) {
+export async function getEnhancedGroupMetadata(conn: any, groupJid: string): Promise<any | null> {
     const cached = groupCache.get(groupJid);
     if (cached && (Date.now() - cached.time) < CONFIG.TTL) {
         return cached.data;
@@ -181,12 +181,12 @@ export async function getEnhancedGroupMetadata(conn, groupJid) {
     if (!metadata?.participants) throw new Error('Invalid metadata');
 
     const processedParticipants = await Promise.all(
-        metadata.participants.map(async (p) => {
-            let jid = p.id || p.jid;
+        metadata.participants.map(async (p: GroupParticipant) => {
+            let jid: string | null = p.id;
             jid = autoCleanJid(jid);
 
             if (isLidJid(jid)) {
-                jid = await autoResolveLid(conn, jid);
+                jid = await autoResolveLid(conn, jid as string);
                 if (!jid) return null;
             }
 
@@ -195,7 +195,7 @@ export async function getEnhancedGroupMetadata(conn, groupJid) {
             return {
                 jid,
                 admin: p.admin || null,
-                isAdmin: ['admin', 'superadmin'].includes(p.admin)
+                isAdmin: ['admin', 'superadmin'].includes(p.admin || '')
             };
         })
     );
@@ -207,7 +207,7 @@ export async function getEnhancedGroupMetadata(conn, groupJid) {
         subject: metadata.subject,
         owner: metadata.owner ? autoCleanJid(metadata.owner) : null,
         participants: validParticipants,
-        admins: validParticipants.filter(p => p.isAdmin),
+        admins: validParticipants.filter(p => (p as any).isAdmin),
         size: validParticipants.length,
     };
 

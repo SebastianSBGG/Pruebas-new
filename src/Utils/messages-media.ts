@@ -632,16 +632,41 @@ export const downloadEncryptedContent = async (
 }
 
 export function extensionForMediaMessage(message: WAMessageContent) {
-	const getExtension = (mimetype: string) => mimetype.split(';')[0]?.split('/')[1]
-	const type = Object.keys(message)[0] as Exclude<MessageType, 'toJSON'>
-	let extension: string
-	if (type === 'locationMessage' || type === 'liveLocationMessage' || type === 'productMessage') {
-		extension = '.jpeg'
-	} else {
-		const messageContent = message[type] as WAGenericMediaMessage
-		extension = getExtension(messageContent.mimetype!)!
-	}
+	const getExtension = (mimetype: string) => mimetype.split(';')[0]?.split('/')[1] || ''
 
+	const type = ((message: proto.IMessage | undefined) => {
+		if (message?.imageMessage) {
+			return 'image'
+		} else if (message?.videoMessage) {
+			return 'video'
+		} else if (message?.audioMessage) {
+			return 'audio'
+		} else if (message?.stickerMessage) {
+			return 'sticker'
+		} else if (message?.documentMessage) {
+			return 'document'
+		} else if (message?.locationMessage) {
+			return 'location'
+		} else if (message?.liveLocationMessage) {
+			return 'liveLocation'
+		} else if (message?.productMessage) {
+			return 'product'
+		}
+		// ... and so on for other types
+		return undefined
+	})(message)
+
+	let extension = '.bin'
+
+	if (type === 'location' || type === 'liveLocation' || type === 'product') {
+		extension = '.jpeg'
+	} else if (type) {
+		const key = `${type}Message` as keyof WAMessageContent
+		const messageContent = message[key] as WAGenericMediaMessage
+		if (messageContent?.mimetype) {
+			extension = getExtension(messageContent.mimetype)
+		}
+	}
 	return extension
 }
 
