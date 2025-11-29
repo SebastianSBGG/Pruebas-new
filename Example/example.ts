@@ -198,6 +198,13 @@ const startSock = async(phoneNumber?: string) => {
 					});
 				}
 
+				if (text === '!ai') {
+					await sock.sendMessage(msg.key.remoteJid!, {
+						text: 'Este es un mensaje con el ícono de IA.',
+						isAi: true
+					});
+				}
+
 				if (text === '!interactive') {
 					await sock.sendMessage(msg.key.remoteJid!, {
 						interactiveMessage: {
