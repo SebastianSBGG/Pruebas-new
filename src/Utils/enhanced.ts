@@ -54,9 +54,6 @@ const jidCache = new Map();
 /** @type {Map<string, GroupCacheEntry>} */
 const groupCache = new Map();
 
-/** @type {Set<string>} */
-const failedLids = new Set();
-
 const CONFIG = {
     TTL: 5 * 60 * 1000,
     MAX_SIZE: 500
@@ -103,48 +100,6 @@ export function isValidJid(jid: string | null | undefined): boolean {
 }
 
 /**
- * Resuelve LID a JID real
- * @param {any} conn - Conexión de Baileys
- * @param {string} lid
- * @returns {Promise<string | null>}
- */
-export async function autoResolveLid(conn: any, lid: string): Promise<string | null> {
-    if (!lid || !isLidJid(lid)) return lid;
-
-    const cached = jidCache.get(lid);
-    if (cached && (Date.now() - cached.time) < CONFIG.TTL) {
-        return cached.jid;
-    }
-
-    if (failedLids.has(lid)) return null;
-
-    try {
-        const phone = lid.split('@')[0]?.replace(/\D/g, '');
-        if (!phone || phone.length < 10) return null;
-
-        const [result] = await conn.onWhatsApp(phone);
-        if (result?.jid) {
-            const resolved = autoCleanJid(result.jid);
-            if (isValidJid(resolved)) {
-                jidCache.set(lid, { jid: resolved as string, time: Date.now() });
-
-                if (jidCache.size > CONFIG.MAX_SIZE) {
-                    const firstKey = jidCache.keys().next().value;
-                    jidCache.delete(firstKey);
-                }
-
-                return resolved;
-            }
-        }
-    } catch (err) {
-        // Silent fail
-    }
-
-    failedLids.add(lid);
-    return null;
-}
-
-/**
  * Procesa array de JIDs
  * @param {any} conn
  * @param {(string | null | undefined)[]} jids
@@ -159,11 +114,14 @@ export async function autoProcessJids(conn: any, jids: (string | null | undefine
 
             const cleaned = autoCleanJid(jid);
             if (isLidJid(cleaned)) {
-                return await autoResolveLid(conn, cleaned as string);
+                // This is intended for individual JID resolution, not batching.
+                // For group metadata, getEnhancedGroupMetadata should be used.
+                return await conn.signalRepository.lidMapping.getPNForLID(cleaned);
             }
 
             return isValidJid(cleaned) ? cleaned : null;
         } catch (err) {
+            console.error('Error processing JID:', jid, err);
             return null;
         }
     });
@@ -173,7 +131,7 @@ export async function autoProcessJids(conn: any, jids: (string | null | undefine
 }
 
 /**
- * Obtiene metadata mejorada
+ * Obtiene metadata mejorada de un grupo, resolviendo LIDs en lote.
  * @param {any} conn
  * @param {string} groupJid
  * @returns {Promise<EnhancedGroupMetadata | null>}
@@ -187,40 +145,53 @@ export async function getEnhancedGroupMetadata(conn: any, groupJid: string): Pro
     const metadata = await conn.groupMetadata(groupJid);
     if (!metadata?.participants) throw new Error('Invalid metadata');
 
-    const processedParticipants = await Promise.all(
-        metadata.participants.map(async (p: GroupParticipant) => {
-            let jid: string | null = p.id;
-            jid = autoCleanJid(jid);
+    const participantLIDs = metadata.participants
+        .map((p: GroupParticipant) => autoCleanJid(p.id))
+        .filter((j: string | null): j is string => !!j && isLidJid(j));
 
-            if (isLidJid(jid)) {
-                jid = await autoResolveLid(conn, jid as string);
-                if (!jid) {
-                    console.error('Failed to resolve LID JID for participant:', p.id);
-                    return null;
-                }
+    const lidPnMap = new Map<string, string>();
+    if (participantLIDs.length > 0) {
+        const resolved = await conn.signalRepository.lidMapping.getPNsForLIDs(participantLIDs);
+        if (resolved) {
+            for (const { lid, pn } of resolved) {
+                lidPnMap.set(autoCleanJid(lid)!, autoCleanJid(pn)!);
             }
+        }
+    }
 
-            if (!isValidJid(jid)) {
-                console.error('Invalid JID for participant:', p.id);
-                return null;
+    const processedParticipants = metadata.participants.map((p: GroupParticipant) => {
+        let jid: string | null = autoCleanJid(p.id);
+
+        if (jid && isLidJid(jid)) {
+            const resolvedPn = lidPnMap.get(jid);
+            if (resolvedPn) {
+                jid = resolvedPn;
+            } else {
+                console.error('Failed to resolve LID JID for participant:', p.id);
+                // We don't return null here, so we can still see the participant in the list
             }
+        }
 
-            return {
-                jid,
-                admin: p.admin || null,
-                isAdmin: ['admin', 'superadmin'].includes(p.admin || '')
-            };
-        })
-    );
+        if (!isValidJid(jid)) {
+            console.error('Invalid JID for participant:', p.id, '->', jid);
+            // Don't filter out, just log the error
+        }
 
-    const validParticipants = processedParticipants.filter(p => p !== null);
+        return {
+            jid: jid || p.id, // Fallback to original ID if all else fails
+            admin: p.admin || null,
+            isAdmin: ['admin', 'superadmin'].includes(p.admin || '')
+        };
+    });
+
+    const validParticipants = processedParticipants.filter((p: { jid: string | null; }) => !!p.jid);
 
     const enhancedMetadata = {
         id: metadata.id,
         subject: metadata.subject,
         owner: metadata.owner ? autoCleanJid(metadata.owner) : null,
         participants: validParticipants,
-        admins: validParticipants.filter(p => (p as any).isAdmin),
+        admins: validParticipants.filter((p: { isAdmin: boolean; }) => p.isAdmin),
         size: validParticipants.length,
     };
 
