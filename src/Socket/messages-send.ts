@@ -473,7 +473,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			}
 		}
 
-		const meJid = autoCleanJid(authState.creds.me.id)
+		const meJid = autoCleanJid(authState.creds.me.id) as string
 
 		const msgId = await relayMessage(meJid, protocolMessage, {
 			additionalAttributes: {
