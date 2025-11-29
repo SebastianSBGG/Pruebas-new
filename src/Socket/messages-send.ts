@@ -473,8 +473,12 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			}
 		}
 
-		const meJid = autoCleanJid(authState.creds.me.id) as string
-
+		const meJid = autoCleanJid(authState.creds.me.id)
+		if (!meJid) {
+			throw new Boom('Could not clean my JID', {
+				statusCode: 500
+			})
+		}
 		const msgId = await relayMessage(meJid as string, protocolMessage, {
 			additionalAttributes: {
 				category: 'peer',

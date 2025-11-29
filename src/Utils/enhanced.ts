@@ -99,7 +99,7 @@ export function isValidJid(jid: string | null | undefined): boolean {
     if (!jid) return false;
     const cleaned = autoCleanJid(jid);
     if (!cleaned || isLidJid(cleaned)) return false;
-    return /^(\d{10,15})@(s.whatsapp.net|g.us)$/.test(cleaned as string);
+    return /^(\d{10,15})@(s.whatsapp.net|g.us)$/.test(cleaned);
 }
 
 /**

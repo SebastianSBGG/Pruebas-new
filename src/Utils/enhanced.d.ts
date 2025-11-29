@@ -35,6 +35,6 @@ declare module 'baileys-enhanced' {
     export function isLidJid(jid: string | null | undefined): boolean;
     export function isValidJid(jid: string | null | undefined): boolean;
     export function autoResolveLid(conn: any, lid: string): Promise<string | null>;
-    export function autoProcessJids(conn: any, jids: (string | null | undefined)[]): Promise<string[]>;
+    export function autoProcessJids(conn: any, jids: (string | null | undefined)[]): Promise<(string | null)[]>;
     export function getEnhancedGroupMetadata(conn: any, groupJid: string): Promise<EnhancedGroupMetadata | null>;
 }
